@@ -1,5 +1,5 @@
 FROM rust:buster as builder-gifski
-RUN cargo install --version 1.32.0 gifski
+RUN cargo install --version 1.32.0 gifski --locked
 
 FROM gcc:15 as builder-lottie-to-png
 RUN apt update && \
@@ -27,28 +27,3 @@ CMD bash -c "\
     done\
 "
 ENV FORMAT=gif
-
-FROM alpine:3.22.0 as builder-lottie-to-some
-COPY --from=builder-lottie-to-png /application/bin/lottie_to_png /usr/bin/lottie_to_png
-COPY bin/* /usr/bin/
-CMD sh -c "\
-    find /source -type f \( -iname \*.json -o -iname \*.lottie -o -iname \*.tgs \) | while IFS=$'\n' read -r FILE; do \
-        echo Converting \${FILE}... && lottie_to_\${FORMAT}.sh \${WIDTH:+--width \$WIDTH} \${HEIGHT:+--height \$HEIGHT} \${FPS:+--fps \$FPS} \${QUALITY:+--quality \$QUALITY} \$FILE && echo Done.; \
-    done\
-"
-
-FROM builder-lottie-to-some as builder-lottie-to-ffmpegable
-RUN apk --no-cache add ffmpeg
-
-FROM builder-lottie-to-ffmpegable as lottie-to-apng
-ENV FORMAT=apng
-
-FROM builder-lottie-to-ffmpegable as lottie-to-webm
-ENV FORMAT=webm
-
-FROM builder-lottie-to-some as lottie-to-png
-ENV FORMAT=png
-
-FROM builder-lottie-to-some as lottie-to-webp
-RUN apk --no-cache add libwebp-tools
-ENV FORMAT=webp
